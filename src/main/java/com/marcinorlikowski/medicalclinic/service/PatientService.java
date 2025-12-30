@@ -22,10 +22,7 @@ public class PatientService {
 
     public Patient getPatientByEmail(String email) {
         PatientValidator.validateEmail(email);
-        List<Patient> patients = patientRepository.getAll();
-        return patients.stream()
-                .filter(patient -> patient.getEmail().equalsIgnoreCase(email))
-                .findFirst()
+        return patientRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("No patient with this email"));
     }
 
@@ -45,11 +42,9 @@ public class PatientService {
     public Patient updatePatient(Patient updatedPatient, String email) {
         PatientValidator.validatePatient(updatedPatient);
         PatientValidator.validateEmail(email);
-        return patientRepository.findByEmail(email)
-                .map(patient -> {
-                    patient.updatePatient(updatedPatient);
-                    return patient;
-                })
+        Patient patient = patientRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("No patient with this email"));
+        patient.updatePatient(updatedPatient);
+        return patient;
     }
 }

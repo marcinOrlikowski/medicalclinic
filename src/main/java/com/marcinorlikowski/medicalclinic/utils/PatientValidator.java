@@ -6,7 +6,7 @@ import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
 import java.util.Objects;
 import java.util.Optional;
 
-public class PatientValidator {
+public final class PatientValidator {
 
     private PatientValidator() {
         throw new UnsupportedOperationException("Cannot create util class");
