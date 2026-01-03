@@ -47,4 +47,13 @@ public class PatientService {
         patient.updatePatient(updatedPatient);
         return patient;
     }
+
+    public Patient changePatientPassword(String email, String password) {
+        PatientValidator.validateEmail(email);
+        PatientValidator.validatePassword(password);
+        Patient patient = patientRepository.findByEmail(email)
+                .orElseThrow(() -> new NoSuchElementException("No patient with this email"));
+        patient.setPassword(password);
+        return patient;
+    }
 }

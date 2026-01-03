@@ -1,5 +1,6 @@
 package com.marcinorlikowski.medicalclinic.controller;
 
+import com.marcinorlikowski.medicalclinic.model.ChangePasswordCommand;
 import com.marcinorlikowski.medicalclinic.model.Patient;
 import com.marcinorlikowski.medicalclinic.service.PatientService;
 import org.springframework.http.HttpStatus;
@@ -43,6 +44,12 @@ public class PatientController {
     @PutMapping("/{email}")
     @ResponseStatus(HttpStatus.OK)
     public Patient updatePatient(@RequestBody Patient updatedPatient, @PathVariable String email) {
-       return patientService.updatePatient(updatedPatient, email);
+        return patientService.updatePatient(updatedPatient, email);
+    }
+
+    @PatchMapping("/{email}")
+    @ResponseStatus(HttpStatus.OK)
+    public Patient changePassword(@PathVariable String email, @RequestBody ChangePasswordCommand password) {
+        return patientService.changePatientPassword(email, password.password());
     }
 }

@@ -31,4 +31,11 @@ public final class PatientValidator {
             throw new IllegalArgumentException("Email cannot be empty");
         }
     }
+
+    public static void validatePassword(String password) {
+        Objects.requireNonNull(password, "Password cannot be null");
+        if (password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be empty");
+        }
+    }
 }
