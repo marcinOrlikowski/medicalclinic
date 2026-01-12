@@ -32,6 +32,13 @@ public final class PatientValidator {
         }
     }
 
+    public static void validateLastName(String lastName) {
+        Objects.requireNonNull(lastName, "LastName cannot be null");
+        if (lastName.trim().isEmpty()) {
+            throw new IllegalArgumentException("LastName cannot be empty");
+        }
+    }
+
     public static void validatePassword(String password) {
         Objects.requireNonNull(password, "Password cannot be null");
         if (password.trim().isEmpty()) {
