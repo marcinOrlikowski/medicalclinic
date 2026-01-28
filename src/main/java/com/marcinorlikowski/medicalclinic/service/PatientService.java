@@ -1,75 +1,96 @@
 package com.marcinorlikowski.medicalclinic.service;
 
+import com.marcinorlikowski.medicalclinic.dto.CreatePatientCommand;
+import com.marcinorlikowski.medicalclinic.dto.PageDto;
+import com.marcinorlikowski.medicalclinic.dto.PageMetadata;
+import com.marcinorlikowski.medicalclinic.dto.PatientDto;
+import com.marcinorlikowski.medicalclinic.exceptions.PatientNotFoundException;
 import com.marcinorlikowski.medicalclinic.mapper.PatientMapper;
-import com.marcinorlikowski.medicalclinic.model.CreatePatientCommand;
-import com.marcinorlikowski.medicalclinic.model.Patient;
-import com.marcinorlikowski.medicalclinic.model.PatientDto;
+import com.marcinorlikowski.medicalclinic.model.*;
 import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
-import com.marcinorlikowski.medicalclinic.utils.PatientValidator;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class PatientService {
     private final PatientMapper mapper;
     private final PatientRepository patientRepository;
+    private final UserService userService;
 
-    public List<PatientDto> getAll() {
-        List<Patient> patients = patientRepository.findAll();
-        return mapper.toDto(patients);
+    public PageDto<PatientDto> getAll(Pageable pageable) {
+        Page<Patient> patients = patientRepository.findAll(pageable);
+        List<PatientDto> patientsDto = mapper.toDto(patients.getContent());
+        PageMetadata metadata = new PageMetadata(
+                patients.getNumber(),
+                patients.getSize(),
+                patients.getTotalElements(),
+                patients.getTotalPages()
+        );
+        return new PageDto<>(patientsDto, metadata);
     }
 
     public PatientDto getPatientByEmail(String email) {
-        PatientValidator.validateEmail(email);
         Patient patient = patientRepository.findByEmail(email)
-                .orElseThrow(() -> new NoSuchElementException("No patient with this email"));
+                .orElseThrow(PatientNotFoundException::new);
         return mapper.toDto(patient);
     }
 
     public List<PatientDto> getPatientsByLastName(String lastName) {
-        PatientValidator.validateLastName(lastName);
-        return patientRepository.findByLastNameStartingWithIgnoreCase(lastName).stream()
+        return patientRepository.findByUserLastNameStartingWithIgnoreCase(lastName).stream()
                 .map(mapper::toDto)
                 .toList();
     }
 
+    @Transactional
     public PatientDto addPatient(CreatePatientCommand command) {
+        validateIfPatientAlreadyExists(command.email());
         Patient patient = new Patient(command);
-        PatientValidator.validatePatient(patient);
-        PatientValidator.validateIfPatientAlreadyExists(patientRepository, patient);
+        User user = userService.getOrCreateUser(command.firstName(), command.lastName());
+        patient.addUser(user);
         Patient added = patientRepository.save(patient);
         return mapper.toDto(added);
     }
 
+    @Transactional
     public void removePatientByEmail(String email) {
-        PatientValidator.validateEmail(email);
-        Patient foundPatient = patientRepository.findByEmail(email)
-                .orElseThrow(() -> new NoSuchElementException("No patient with this email"));
-        patientRepository.delete(foundPatient);
-    }
-
-    public PatientDto updatePatient(CreatePatientCommand command, String email) {
-        PatientValidator.validateEmail(email);
         Patient patient = patientRepository.findByEmail(email)
-                .orElseThrow(() -> new NoSuchElementException("No patient with this email"));
-        Patient updatedPatient = new Patient(command);
-        PatientValidator.validatePatient(updatedPatient);
-        patient.updatePatient(updatedPatient);
-        patientRepository.save(patient);
-        return mapper.toDto(patient);
+                .orElseThrow(PatientNotFoundException::new);
+        User user = patient.getUser();
+        patient.removeUser(user);
+        patientRepository.delete(patient);
     }
 
+    @Transactional
+    public PatientDto updatePatient(String email, CreatePatientCommand command) {
+        Patient patient = patientRepository.findByEmail(email)
+                .orElseThrow(PatientNotFoundException::new);
+        User user = userService.getOrCreateUser(command.firstName(), command.lastName());
+        patient.addUser(user);
+        patient.updatePatient(command);
+        Patient updated = patientRepository.save(patient);
+        return mapper.toDto(updated);
+    }
+
+    @Transactional
     public PatientDto changePatientPassword(String email, String password) {
-        PatientValidator.validateEmail(email);
-        PatientValidator.validatePassword(password);
         Patient patient = patientRepository.findByEmail(email)
-                .orElseThrow(() -> new NoSuchElementException("No patient with this email"));
+                .orElseThrow(PatientNotFoundException::new);
         patient.setPassword(password);
         patientRepository.save(patient);
         return mapper.toDto(patient);
+    }
+
+    private void validateIfPatientAlreadyExists(String email) {
+        Optional<Patient> foundPatient = patientRepository.findByEmail(email);
+        if (foundPatient.isPresent()) {
+            throw new IllegalArgumentException("Patient with this email already exists");
+        }
     }
 }

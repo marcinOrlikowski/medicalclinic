@@ -1,13 +1,16 @@
 package com.marcinorlikowski.medicalclinic.model;
 
+import com.marcinorlikowski.medicalclinic.dto.CreatePatientCommand;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
 @Entity
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 public class Patient {
     @Id
@@ -16,8 +19,9 @@ public class Patient {
     private String email;
     private String password;
     private String idCardNo;
-    private String firstName;
-    private String lastName;
+    @OneToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    private User user;
     private String phoneNumber;
     private LocalDate birthDate;
 
@@ -25,18 +29,39 @@ public class Patient {
         this.email = command.email();
         this.password = command.password();
         this.idCardNo = command.idCardNo();
-        this.firstName = command.firstName();
-        this.lastName = command.lastName();
         this.phoneNumber = command.phoneNumber();
         this.birthDate = command.birthDate();
     }
 
-    public void updatePatient(Patient updatedPatient) {
-        this.password = updatedPatient.password;
-        this.idCardNo = updatedPatient.idCardNo;
-        this.firstName = updatedPatient.firstName;
-        this.lastName = updatedPatient.lastName;
-        this.phoneNumber = updatedPatient.phoneNumber;
-        this.birthDate = updatedPatient.birthDate;
+    public void updatePatient(CreatePatientCommand command) {
+        this.password = command.password();
+        this.idCardNo = command.idCardNo();
+        this.phoneNumber = command.phoneNumber();
+        this.birthDate = command.birthDate();
+    }
+
+    public void addUser(User user) {
+        this.user = user;
+        user.setPatient(this);
+    }
+
+    public void removeUser(User user) {
+        this.user = null;
+        user.setPatient(null);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Patient))
+            return false;
+        Patient other = (Patient) o;
+        return id != null &&
+                id.equals(other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }
