@@ -8,7 +8,6 @@ import com.marcinorlikowski.medicalclinic.exceptions.DoctorNotFoundException;
 import com.marcinorlikowski.medicalclinic.mapper.DoctorMapper;
 import com.marcinorlikowski.medicalclinic.model.*;
 import com.marcinorlikowski.medicalclinic.repository.DoctorRepository;
-import com.marcinorlikowski.medicalclinic.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,7 +22,6 @@ import java.util.Optional;
 public class DoctorService {
     private final DoctorMapper doctorMapper;
     private final DoctorRepository doctorRepository;
-    private final UserRepository userRepository;
     private final UserService userService;
 
     public PageDto<DoctorDto> getAll(Pageable pageable) {
