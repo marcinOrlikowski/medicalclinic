@@ -4,6 +4,7 @@ import com.marcinorlikowski.medicalclinic.dto.CreateInstitutionCommand;
 import com.marcinorlikowski.medicalclinic.dto.InstitutionDto;
 import com.marcinorlikowski.medicalclinic.dto.PageDto;
 import com.marcinorlikowski.medicalclinic.service.InstitutionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -23,7 +24,7 @@ public class InstitutionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public InstitutionDto addInstitution(@RequestBody CreateInstitutionCommand command) {
+    public InstitutionDto addInstitution(@Valid @RequestBody CreateInstitutionCommand command) {
         return institutionService.addInstitution(command);
     }
 
@@ -34,7 +35,7 @@ public class InstitutionController {
 
     @PutMapping("/{institutionId}")
     public InstitutionDto updateInstitution(@PathVariable Long institutionId,
-                                            @RequestBody CreateInstitutionCommand command) {
+                                            @Valid @RequestBody CreateInstitutionCommand command) {
         return institutionService.updateInstitution(institutionId, command);
     }
 

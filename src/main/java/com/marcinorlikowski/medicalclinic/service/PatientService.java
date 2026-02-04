@@ -5,6 +5,7 @@ import com.marcinorlikowski.medicalclinic.dto.PageDto;
 import com.marcinorlikowski.medicalclinic.dto.PageMetadata;
 import com.marcinorlikowski.medicalclinic.dto.PatientDto;
 import com.marcinorlikowski.medicalclinic.exceptions.PatientNotFoundException;
+import com.marcinorlikowski.medicalclinic.exceptions.ResourceAlreadyExistsException;
 import com.marcinorlikowski.medicalclinic.mapper.PatientMapper;
 import com.marcinorlikowski.medicalclinic.model.*;
 import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
@@ -90,7 +91,7 @@ public class PatientService {
     private void validateIfPatientAlreadyExists(String email) {
         Optional<Patient> foundPatient = patientRepository.findByEmail(email);
         if (foundPatient.isPresent()) {
-            throw new IllegalArgumentException("Patient with this email already exists");
+            throw new ResourceAlreadyExistsException("ERROR - Patient already exists");
         }
     }
 }

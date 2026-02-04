@@ -31,6 +31,9 @@ public class Doctor {
             inverseJoinColumns = @JoinColumn(name = "institution_id"),
             uniqueConstraints = @UniqueConstraint(columnNames = {"doctor_id", "institution_id"}))
     private List<Institution> institutions = new ArrayList<>();
+    @OneToMany(mappedBy = "doctor")
+    private List<Appointment> appointments = new ArrayList<>();
+
 
     public Doctor(CreateDoctorCommand command) {
         this.email = command.email();

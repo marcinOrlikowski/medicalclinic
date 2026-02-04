@@ -4,6 +4,7 @@ import com.marcinorlikowski.medicalclinic.dto.PageDto;
 import com.marcinorlikowski.medicalclinic.dto.PageMetadata;
 import com.marcinorlikowski.medicalclinic.exceptions.DoctorNotFoundException;
 import com.marcinorlikowski.medicalclinic.exceptions.InstitutionNotFoundException;
+import com.marcinorlikowski.medicalclinic.exceptions.ResourceAlreadyExistsException;
 import com.marcinorlikowski.medicalclinic.mapper.InstitutionMapper;
 import com.marcinorlikowski.medicalclinic.dto.CreateInstitutionCommand;
 import com.marcinorlikowski.medicalclinic.model.Doctor;
@@ -69,9 +70,16 @@ public class InstitutionService {
                 .orElseThrow(InstitutionNotFoundException::new);
         Doctor doctor = doctorRepository.findById(doctorId)
                 .orElseThrow(DoctorNotFoundException::new);
+        validateIfDoctorIsAlreadyAssigned(institution, doctor);
         doctor.assignInstitution(institution);
         doctorRepository.save(doctor);
         Institution saved = institutionRepository.save(institution);
         return institutionMapper.toDto(saved);
+    }
+
+    private void validateIfDoctorIsAlreadyAssigned(Institution institution, Doctor doctor) {
+        if (institution.getDoctors().contains(doctor)) {
+            throw new ResourceAlreadyExistsException("ERROR - Doctor is already assigned to this institution");
+        }
     }
 }

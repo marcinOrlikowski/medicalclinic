@@ -1,7 +1,9 @@
 package com.marcinorlikowski.medicalclinic.exceptions;
 
-public class InstitutionNotFoundException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+public class InstitutionNotFoundException extends MedicalClinicException {
     public InstitutionNotFoundException() {
-        super("ERROR - Institution not found");
+        super("ERROR - Institution not found", HttpStatus.NOT_FOUND);
     }
 }

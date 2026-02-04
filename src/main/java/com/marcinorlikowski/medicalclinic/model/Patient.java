@@ -1,5 +1,6 @@
 package com.marcinorlikowski.medicalclinic.model;
 
+import com.marcinorlikowski.medicalclinic.dto.AppointmentDto;
 import com.marcinorlikowski.medicalclinic.dto.CreatePatientCommand;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -7,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -24,6 +27,8 @@ public class Patient {
     private User user;
     private String phoneNumber;
     private LocalDate birthDate;
+    @OneToMany(mappedBy = "patient")
+    private List<Appointment> appointments = new ArrayList<>();
 
     public Patient(CreatePatientCommand command) {
         this.email = command.email();
@@ -48,6 +53,11 @@ public class Patient {
     public void removeUser(User user) {
         this.user = null;
         user.setPatient(null);
+    }
+
+    public void assignPatientToAppointment(Appointment appointment) {
+        this.appointments.add(appointment);
+        appointment.setPatient(this);
     }
 
     @Override

@@ -1,7 +1,9 @@
 package com.marcinorlikowski.medicalclinic.exceptions;
 
-public class DoctorNotFoundException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+public class DoctorNotFoundException extends MedicalClinicException {
     public DoctorNotFoundException() {
-        super("ERROR - Doctor not found");
+        super("ERROR - Doctor not found", HttpStatus.NOT_FOUND);
     }
 }

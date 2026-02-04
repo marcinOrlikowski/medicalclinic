@@ -24,7 +24,7 @@ public class DoctorController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public DoctorDto addDoctor(@RequestBody CreateDoctorCommand command) {
+    public DoctorDto addDoctor(@Valid @RequestBody CreateDoctorCommand command) {
         return doctorService.addDoctor(command);
     }
 

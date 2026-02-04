@@ -5,6 +5,7 @@ import com.marcinorlikowski.medicalclinic.dto.DoctorDto;
 import com.marcinorlikowski.medicalclinic.dto.PageDto;
 import com.marcinorlikowski.medicalclinic.dto.PageMetadata;
 import com.marcinorlikowski.medicalclinic.exceptions.DoctorNotFoundException;
+import com.marcinorlikowski.medicalclinic.exceptions.ResourceAlreadyExistsException;
 import com.marcinorlikowski.medicalclinic.mapper.DoctorMapper;
 import com.marcinorlikowski.medicalclinic.model.*;
 import com.marcinorlikowski.medicalclinic.repository.DoctorRepository;
@@ -69,7 +70,7 @@ public class DoctorService {
     private void validateIfDoctorAlreadyExists(String email) {
         Optional<Doctor> foundDoctor = doctorRepository.findByEmail(email);
         if (foundDoctor.isPresent()) {
-            throw new IllegalArgumentException("Doctor with this email already exists");
+            throw new ResourceAlreadyExistsException("ERROR - Doctor already exists");
         }
     }
 }
