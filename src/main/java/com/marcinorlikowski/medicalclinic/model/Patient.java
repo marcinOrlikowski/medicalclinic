@@ -1,8 +1,8 @@
 package com.marcinorlikowski.medicalclinic.model;
 
-import com.marcinorlikowski.medicalclinic.dto.AppointmentDto;
 import com.marcinorlikowski.medicalclinic.dto.CreatePatientCommand;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,6 +15,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class Patient {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

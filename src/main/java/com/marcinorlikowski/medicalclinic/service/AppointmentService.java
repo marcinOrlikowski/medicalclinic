@@ -9,7 +9,6 @@ import com.marcinorlikowski.medicalclinic.mapper.AppointmentMapper;
 import com.marcinorlikowski.medicalclinic.model.Appointment;
 import com.marcinorlikowski.medicalclinic.model.Doctor;
 import com.marcinorlikowski.medicalclinic.model.Patient;
-import com.marcinorlikowski.medicalclinic.model.Period;
 import com.marcinorlikowski.medicalclinic.repository.AppointmentsRepository;
 import com.marcinorlikowski.medicalclinic.repository.DoctorRepository;
 import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
@@ -21,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -76,10 +76,9 @@ public class AppointmentService {
     }
 
     private void checkIfAppointmentOverlaps(CreateAppointmentCommand command) {
-        List<Appointment> doctorAppointments = appointmentsRepository.findAllByDoctorId(command.doctorId());
-        boolean overlaps = doctorAppointments.stream()
-                .map(Appointment::getPeriod)
-                .anyMatch(period -> period.overlaps(Period.of(command.startDate(), command.endDate())));
+        boolean overlaps = appointmentsRepository.existsOverlappingAppointment(
+                command.doctorId(), command.startDate(), command.endDate()
+        );
         if (overlaps) {
             throw new AppointmentNotAvailableException();
         }
