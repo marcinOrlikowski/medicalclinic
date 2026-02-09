@@ -19,8 +19,8 @@ public interface AppointmentsRepository extends JpaRepository<Appointment, Long>
                 select count(a) > 0
                 from Appointment a
                 where a.doctor.id = :doctorId
-                  and a.appointmentPeriod.start < :end
-                  and :start < a.appointmentPeriod.end
+                  and a.period.start < :end
+                  and :start < a.period.end
             """)
     boolean existsOverlappingAppointment(
             @Param("doctorId") Long doctorId,
