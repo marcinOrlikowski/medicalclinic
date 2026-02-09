@@ -134,9 +134,12 @@ public class PatientServiceTest {
                 "123456789", LocalDate.of(1999, 11, 6)
         );
         User user = new User(1L, "Sebek", "Javowy", null, null);
+        Patient patient = new Patient(command);
+        patient.addUser(user);
         when(userService.getOrCreateUser("Sebek", "Javowy")).thenReturn(user);
-        when(patientRepository.save(any(Patient.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(patientRepository.save(any()))
+                .thenReturn(patient);
+        // when
         PatientDto result = patientService.addPatient(command);
         // then
         Assertions.assertAll(
