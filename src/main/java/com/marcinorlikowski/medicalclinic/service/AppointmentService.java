@@ -15,15 +15,16 @@ import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
 import com.marcinorlikowski.medicalclinic.utils.Validator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AppointmentService {
     private final AppointmentsRepository appointmentsRepository;
     private final DoctorRepository doctorRepository;
@@ -31,6 +32,7 @@ public class AppointmentService {
     private final AppointmentMapper mapper;
 
     public PageDto<AppointmentDto> getAll(Pageable pageable) {
+        log.info("Getting appointments page: {}, with {} elements", pageable.getPageNumber(), pageable.getPageSize());
         Page<Appointment> appointments = appointmentsRepository.findAll(pageable);
         List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
         PageMetadata metadata = createPageMetaData(appointments);
@@ -38,6 +40,8 @@ public class AppointmentService {
     }
 
     public PageDto<AppointmentDto> getAllByDoctorId(Pageable pageable, Long doctorId) {
+        log.info("Getting appointments page: {}, with {} elements for doctor with id: {}",
+                pageable.getPageNumber(), pageable.getPageSize(), doctorId);
         Page<Appointment> appointments = appointmentsRepository.findAllByDoctorId(pageable, doctorId);
         List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
         PageMetadata metadata = createPageMetaData(appointments);
@@ -45,6 +49,8 @@ public class AppointmentService {
     }
 
     public PageDto<AppointmentDto> getAllByPatientId(Pageable pageable, Long patientId) {
+        log.info("Getting appointments page: {}, with {} elements for patient with id: {}",
+                pageable.getPageNumber(), pageable.getPageSize(), patientId);
         Page<Appointment> appointments = appointmentsRepository.findAllByPatientId(pageable, patientId);
         List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
         PageMetadata metadata = createPageMetaData(appointments);
@@ -58,8 +64,9 @@ public class AppointmentService {
                 .orElseThrow(DoctorNotFoundException::new);
         checkIfAppointmentOverlaps(command);
         Appointment appointment = new Appointment(command);
-        appointment.setDoctor(doctor);
+        doctor.addAppointment(appointment);
         Appointment saved = appointmentsRepository.save(appointment);
+        log.info("Appointment successfully added for doctor with id: {}", command.doctorId());
         return mapper.toDto(saved);
     }
 
@@ -72,6 +79,7 @@ public class AppointmentService {
                 .orElseThrow(PatientNotFoundException::new);
         patient.assignPatientToAppointment(appointment);
         Appointment saved = appointmentsRepository.save(appointment);
+        log.info("Patient with id: {}, successfully added to appointment with id: {}", patientId, appointmentId);
         return mapper.toDto(saved);
     }
 

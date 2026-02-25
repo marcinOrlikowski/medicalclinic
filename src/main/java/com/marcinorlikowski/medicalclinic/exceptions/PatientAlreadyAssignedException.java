@@ -4,6 +4,6 @@ import org.springframework.http.HttpStatus;
 
 public class PatientAlreadyAssignedException extends MedicalClinicException {
     public PatientAlreadyAssignedException() {
-        super("ERROR - This appointment is already taken", HttpStatus.CONFLICT);
+        super("This appointment is already taken", HttpStatus.CONFLICT);
     }
 }

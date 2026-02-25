@@ -11,6 +11,7 @@ import com.marcinorlikowski.medicalclinic.model.*;
 import com.marcinorlikowski.medicalclinic.repository.DoctorRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DoctorService {
@@ -26,6 +28,7 @@ public class DoctorService {
     private final UserService userService;
 
     public PageDto<DoctorDto> getAll(Pageable pageable) {
+        log.info("Getting doctors page: {}, with {} elements", pageable.getPageNumber(), pageable.getPageSize());
         Page<Doctor> doctors = doctorRepository.findAll(pageable);
         List<DoctorDto> doctorsDto = doctorMapper.toDto(doctors.getContent());
         PageMetadata metadata = new PageMetadata(
@@ -44,6 +47,7 @@ public class DoctorService {
         User user = userService.getOrCreateUser(command.firstName(), command.lastName());
         doctor.addUser(user);
         Doctor added = doctorRepository.save(doctor);
+        log.info("Doctor with email: {} successfully added", command.email());
         return doctorMapper.toDto(added);
     }
 
@@ -54,6 +58,7 @@ public class DoctorService {
         User user = doctor.getUser();
         doctor.removeUser(user);
         doctorRepository.delete(doctor);
+        log.info("Doctor with id: {} successfully removed", doctorId);
     }
 
     @Transactional
@@ -64,13 +69,14 @@ public class DoctorService {
         doctor.addUser(user);
         doctor.updateDoctor(command);
         Doctor updated = doctorRepository.save(doctor);
+        log.info("Doctor with id: {} successfully updated", doctorId);
         return doctorMapper.toDto(updated);
     }
 
     private void validateIfDoctorAlreadyExists(String email) {
         Optional<Doctor> foundDoctor = doctorRepository.findByEmail(email);
         if (foundDoctor.isPresent()) {
-            throw new ResourceAlreadyExistsException("ERROR - Doctor already exists");
+            throw new ResourceAlreadyExistsException("Doctor already exists");
         }
     }
 }
