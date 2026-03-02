@@ -14,6 +14,7 @@ import com.marcinorlikowski.medicalclinic.repository.DoctorRepository;
 import com.marcinorlikowski.medicalclinic.repository.InstitutionRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,12 +23,14 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InstitutionService {
     private final InstitutionMapper institutionMapper;
     private final InstitutionRepository institutionRepository;
     private final DoctorRepository doctorRepository;
 
     public PageDto<InstitutionDto> getAll(Pageable pageable) {
+        log.info("Getting institutions page: {}, with {} elements", pageable.getPageNumber(), pageable.getPageSize());
         Page<Institution> institutions = institutionRepository.findAll(pageable);
         List<InstitutionDto> institutionsDto = institutionMapper.toDto(institutions.getContent());
         PageMetadata metadata = new PageMetadata(
@@ -43,6 +46,7 @@ public class InstitutionService {
     public InstitutionDto addInstitution(CreateInstitutionCommand command) {
         Institution institution = new Institution(command);
         Institution added = institutionRepository.save(institution);
+        log.info("Institution with name: {} successfully added", command.name());
         return institutionMapper.toDto(added);
     }
 
@@ -52,7 +56,9 @@ public class InstitutionService {
                 .orElseThrow(InstitutionNotFoundException::new);
         institution.getDoctors()
                 .forEach(doctor -> doctor.getInstitutions().remove(institution));
+        institution.getDoctors().clear();
         institutionRepository.delete(institution);
+        log.info("Institution with id: {} successfully removed", institutionId);
     }
 
     @Transactional
@@ -61,6 +67,7 @@ public class InstitutionService {
                 .orElseThrow(InstitutionNotFoundException::new);
         institution.updateInstitution(command);
         Institution updated = institutionRepository.save(institution);
+        log.info("Institution with id: {} successfully updated", institutionId);
         return institutionMapper.toDto(updated);
     }
 
@@ -74,12 +81,13 @@ public class InstitutionService {
         doctor.assignInstitution(institution);
         doctorRepository.save(doctor);
         Institution saved = institutionRepository.save(institution);
+        log.info("Doctor with id: {}, successfully added to institution with id: {}", doctorId, institutionId);
         return institutionMapper.toDto(saved);
     }
 
     private void validateIfDoctorIsAlreadyAssigned(Institution institution, Doctor doctor) {
         if (institution.getDoctors().contains(doctor)) {
-            throw new ResourceAlreadyExistsException("ERROR - Doctor is already assigned to this institution");
+            throw new ResourceAlreadyExistsException("Doctor is already assigned to this institution");
         }
     }
 }

@@ -2,6 +2,7 @@ package com.marcinorlikowski.medicalclinic.model;
 
 import com.marcinorlikowski.medicalclinic.dto.CreateDoctorCommand;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,6 +14,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class Doctor {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -60,6 +62,11 @@ public class Doctor {
     public void assignInstitution(Institution institution) {
         this.institutions.add(institution);
         institution.getDoctors().add(this);
+    }
+
+    public void addAppointment(Appointment appointment) {
+        this.appointments.add(appointment);
+        appointment.setDoctor(this);
     }
 
     @Override

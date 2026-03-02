@@ -11,6 +11,7 @@ import com.marcinorlikowski.medicalclinic.model.*;
 import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,12 +21,14 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PatientService {
     private final PatientMapper mapper;
     private final PatientRepository patientRepository;
     private final UserService userService;
 
     public PageDto<PatientDto> getAll(Pageable pageable) {
+        log.info("Getting patients page: {}, with {} elements", pageable.getPageNumber(), pageable.getPageSize());
         Page<Patient> patients = patientRepository.findAll(pageable);
         List<PatientDto> patientsDto = mapper.toDto(patients.getContent());
         PageMetadata metadata = new PageMetadata(
@@ -40,13 +43,16 @@ public class PatientService {
     public PatientDto getPatientByEmail(String email) {
         Patient patient = patientRepository.findByEmail(email)
                 .orElseThrow(PatientNotFoundException::new);
+        log.info("Patient with email: {} successfully found", email);
         return mapper.toDto(patient);
     }
 
     public List<PatientDto> getPatientsByLastName(String lastName) {
-        return patientRepository.findByUserLastNameStartingWithIgnoreCase(lastName).stream()
+        List<PatientDto> patients = patientRepository.findByUserLastNameStartingWithIgnoreCase(lastName).stream()
                 .map(mapper::toDto)
                 .toList();
+        log.info("Found {} patients with lastname: {}", patients.size(), lastName);
+        return patients;
     }
 
     @Transactional
@@ -56,6 +62,7 @@ public class PatientService {
         User user = userService.getOrCreateUser(command.firstName(), command.lastName());
         patient.addUser(user);
         Patient added = patientRepository.save(patient);
+        log.info("Patient with email: {} successfully added", command.email());
         return mapper.toDto(added);
     }
 
@@ -66,6 +73,7 @@ public class PatientService {
         User user = patient.getUser();
         patient.removeUser(user);
         patientRepository.delete(patient);
+        log.info("Patient with email: {} successfully removed", email);
     }
 
     @Transactional
@@ -76,6 +84,7 @@ public class PatientService {
         patient.addUser(user);
         patient.updatePatient(command);
         Patient updated = patientRepository.save(patient);
+        log.info("Patient with email: {} successfully updated", email);
         return mapper.toDto(updated);
     }
 
@@ -85,13 +94,14 @@ public class PatientService {
                 .orElseThrow(PatientNotFoundException::new);
         patient.setPassword(password);
         patientRepository.save(patient);
+        log.info("Password successfully changed for patient with email: {}" ,email);
         return mapper.toDto(patient);
     }
 
     private void validateIfPatientAlreadyExists(String email) {
         Optional<Patient> foundPatient = patientRepository.findByEmail(email);
         if (foundPatient.isPresent()) {
-            throw new ResourceAlreadyExistsException("ERROR - Patient already exists");
+            throw new ResourceAlreadyExistsException("Patient already exists");
         }
     }
 }

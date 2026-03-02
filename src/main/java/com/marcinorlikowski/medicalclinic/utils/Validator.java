@@ -22,16 +22,16 @@ public final class Validator {
 
     public static void validateDateTime(LocalDateTime startDate, LocalDateTime endDate) {
         if (startDate.isBefore(LocalDateTime.now())) {
-            throw new InvalidDateTimeException("ERROR - Start date must be in future");
+            throw new InvalidDateTimeException("Start date must be in future");
         }
         if (startDate.isAfter(endDate)) {
-            throw new InvalidDateTimeException("ERROR - Start date must be before end date");
+            throw new InvalidDateTimeException("End date must be after start date");
         }
         if (startDate.equals(endDate)) {
-            throw new InvalidDateTimeException("ERROR - Start date is same as end date");
+            throw new InvalidDateTimeException("Start date is same as end date");
         }
         if (startDate.getMinute() % 15 != 0) {
-            throw new InvalidDateTimeException("ERROR - Start time must be an quarter of an hour (ex. 14:15");
+            throw new InvalidDateTimeException("Start time must be an quarter of an hour (ex. 14:15");
         }
     }
 }

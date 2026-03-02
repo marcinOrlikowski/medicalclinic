@@ -4,27 +4,34 @@ import com.marcinorlikowski.medicalclinic.dto.CreatePatientCommand;
 import com.marcinorlikowski.medicalclinic.dto.PageDto;
 import com.marcinorlikowski.medicalclinic.dto.PatientDto;
 import com.marcinorlikowski.medicalclinic.exceptions.PatientNotFoundException;
+import com.marcinorlikowski.medicalclinic.exceptions.ResourceAlreadyExistsException;
 import com.marcinorlikowski.medicalclinic.mapper.PatientMapper;
 import com.marcinorlikowski.medicalclinic.model.Patient;
 import com.marcinorlikowski.medicalclinic.model.User;
 import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
+import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
+import org.mockito.ArgumentMatcher;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
+import static java.util.Objects.nonNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.*;
 
 public class PatientServiceTest {
     PatientService patientService;
@@ -65,8 +72,10 @@ public class PatientServiceTest {
                 () -> Assertions.assertEquals("Sebek", result.content().get(1).lastName()),
                 () -> Assertions.assertEquals("123456789", result.content().get(0).phoneNumber()),
                 () -> Assertions.assertEquals("123456789", result.content().get(1).phoneNumber()),
-                () -> Assertions.assertEquals(LocalDate.of(1999, 11, 6), result.content().get(0).birthDate()),
-                () -> Assertions.assertEquals(LocalDate.of(1999, 11, 6), result.content().get(1).birthDate())
+                () -> Assertions.assertEquals(LocalDate.of(1999, 11, 6),
+                        result.content().get(0).birthDate()),
+                () -> Assertions.assertEquals(LocalDate.of(1999, 11, 6),
+                        result.content().get(1).birthDate())
         );
     }
 
@@ -98,9 +107,13 @@ public class PatientServiceTest {
         String email = "abc@df.com";
         when(patientRepository.findByEmail(email)).thenReturn(Optional.empty());
         // when
-        // then
-        Assertions.assertThrows(PatientNotFoundException.class,
+        PatientNotFoundException exception = Assertions.assertThrows(PatientNotFoundException.class,
                 () -> patientService.getPatientByEmail(email));
+        // then
+        Assertions.assertEquals("Patient not found", exception.getMessage());
+        Assertions.assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        verify(patientRepository).findByEmail(email);
+        verifyNoMoreInteractions(patientRepository);
     }
 
     @Test
@@ -122,7 +135,8 @@ public class PatientServiceTest {
                 () -> Assertions.assertEquals("Sebek", result.getFirst().firstName()),
                 () -> Assertions.assertEquals(lastName, result.getFirst().lastName()),
                 () -> Assertions.assertEquals("123456789", result.getFirst().phoneNumber()),
-                () -> Assertions.assertEquals(LocalDate.of(1999, 11, 6), result.getFirst().birthDate())
+                () -> Assertions.assertEquals(LocalDate.of(1999, 11, 6),
+                        result.getFirst().birthDate())
         );
     }
 
@@ -134,9 +148,13 @@ public class PatientServiceTest {
                 "123456789", LocalDate.of(1999, 11, 6)
         );
         User user = new User(1L, "Sebek", "Javowy", null, null);
-        when(userService.getOrCreateUser("Sebek", "Javowy")).thenReturn(user);
-        when(patientRepository.save(any(Patient.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        Patient patient = new Patient(command);
+        patient.addUser(user);
+        when(userService.getOrCreateUser("Sebek", "Javowy"))
+                .thenReturn(user);
+        when(patientRepository.save(any()))
+                .thenReturn(patient);
+        // when
         PatientDto result = patientService.addPatient(command);
         // then
         Assertions.assertAll(
@@ -152,6 +170,28 @@ public class PatientServiceTest {
         verify(patientRepository).save(any(Patient.class));
     }
 
+    @Test
+    void addPatient_PatientAlreadyExists_ExceptionThrown() {
+        // given
+        CreatePatientCommand command = new CreatePatientCommand(
+                "abc@df.com", "pass", "123", "Sebek", "Javowy",
+                "123456789", LocalDate.of(1999, 11, 6)
+        );
+        Patient existing = new Patient(command);
+        when(patientRepository.findByEmail(command.email()))
+                .thenReturn(Optional.of(existing));
+        // when
+        ResourceAlreadyExistsException exception = Assertions.assertThrows(ResourceAlreadyExistsException.class,
+                () -> patientService.addPatient(command));
+        // then
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Patient already exists", exception.getMessage()),
+                () -> Assertions.assertEquals(HttpStatus.CONFLICT, exception.getStatus())
+        );
+        verify(patientRepository).findByEmail(command.email());
+        verifyNoMoreInteractions(patientRepository);
+    }
+
 
     @Test
     void removePatientByEmail_DataCorrect_PatientRemoved() {
@@ -159,15 +199,19 @@ public class PatientServiceTest {
         String email = "abc@df.com";
         User user = new User(1L, "Sebek", "Javowy", null, null);
         Patient patient = new Patient();
+        patient.setEmail(email);
         patient.setUser(user);
         when(patientRepository.findByEmail(email))
                 .thenReturn(Optional.of(patient));
         // when
         patientService.removePatientByEmail(email);
         // then
-        Assertions.assertNull(patient.getUser());
+        Assertions.assertAll(
+                () -> Assertions.assertNull(patient.getUser())
+        );
         verify(patientRepository).findByEmail(email);
-        verify(patientRepository).delete(any());
+        verify(patientRepository).delete(patient);
+        verifyNoMoreInteractions(patientRepository);
     }
 
     @Test
@@ -177,9 +221,15 @@ public class PatientServiceTest {
         when(patientRepository.findByEmail(email))
                 .thenReturn(Optional.empty());
         // when
-        // then
-        Assertions.assertThrows(PatientNotFoundException.class,
+        PatientNotFoundException exception = Assertions.assertThrows(PatientNotFoundException.class,
                 () -> patientService.removePatientByEmail(email));
+        // then
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Patient not found", exception.getMessage()),
+                () -> Assertions.assertEquals(HttpStatus.NOT_FOUND, exception.getStatus())
+        );
+        verify(patientRepository).findByEmail(any());
+        verifyNoMoreInteractions(patientRepository);
     }
 
     @Test
@@ -194,13 +244,12 @@ public class PatientServiceTest {
         User newUser = new User(2L, "Sebek", "Javowy", null, null);
         Patient patient = new Patient();
         patient.addUser(oldUser);
-
         when(patientRepository.findByEmail(email))
                 .thenReturn(Optional.of(patient));
         when(userService.getOrCreateUser("Sebek", "Javowy"))
                 .thenReturn(newUser);
-        when(patientRepository.save(any(Patient.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(patientRepository.save(any()))
+                .thenReturn(patient);
         // when
         PatientDto result = patientService.updatePatient(email, command);
         // then
@@ -213,8 +262,10 @@ public class PatientServiceTest {
                 () -> Assertions.assertEquals(LocalDate.of(1999, 11, 6), result.birthDate())
         );
         verify(patientRepository).findByEmail(email);
-        verify(patientRepository).save(any(Patient.class));
+        verify(patientRepository).save(patient);
         verify(userService).getOrCreateUser("Sebek", "Javowy");
+        verifyNoMoreInteractions(patientRepository);
+        verifyNoMoreInteractions(userService);
     }
 
     @Test
@@ -228,9 +279,13 @@ public class PatientServiceTest {
         when(patientRepository.findByEmail(email))
                 .thenReturn(Optional.empty());
         // when
-        // then
-        Assertions.assertThrows(PatientNotFoundException.class,
+        PatientNotFoundException exception = Assertions.assertThrows(PatientNotFoundException.class,
                 () -> patientService.updatePatient(email, command));
+        // then
+        Assertions.assertEquals("Patient not found", exception.getMessage());
+        Assertions.assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        verify(patientRepository).findByEmail(email);
+        verifyNoMoreInteractions(patientRepository);
     }
 
     @Test
@@ -239,9 +294,10 @@ public class PatientServiceTest {
         String email = "abc@df.com";
         String password = "newPassword";
         Patient patient = new Patient();
-        when(patientRepository.findByEmail(email)).thenReturn(Optional.of(patient));
-        when(patientRepository.save(any(Patient.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        patient.setEmail("oldEmail");
+        patient.setPassword("oldPassword");
+        when(patientRepository.findByEmail(email))
+                .thenReturn(Optional.of(patient));
         // when
         patientService.changePatientPassword(email, password);
         // then
@@ -249,7 +305,8 @@ public class PatientServiceTest {
                 () -> Assertions.assertEquals(password, patient.getPassword())
         );
         verify(patientRepository).findByEmail(email);
-        verify(patientRepository).save(any(Patient.class));
+        verify(patientRepository).save(argThat(p -> p.getPassword().equals("newPassword")));
+        verifyNoMoreInteractions(patientRepository);
     }
 
     @Test
@@ -260,9 +317,13 @@ public class PatientServiceTest {
         when(patientRepository.findByEmail(email))
                 .thenReturn(Optional.empty());
         // when
-        // then
-        Assertions.assertThrows(PatientNotFoundException.class,
+        PatientNotFoundException exception = Assertions.assertThrows(PatientNotFoundException.class,
                 () -> patientService.changePatientPassword(email, password));
+        // then
+        Assertions.assertEquals("Patient not found", exception.getMessage());
+        Assertions.assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
+        verify(patientRepository).findByEmail(email);
+        verifyNoMoreInteractions(patientRepository);
     }
 
     private static Page<Patient> getPatientPage() {
