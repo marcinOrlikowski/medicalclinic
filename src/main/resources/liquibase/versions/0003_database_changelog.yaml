@@ -1,0 +1,128 @@
+databaseChangeLog:
+  - changeSet:
+      id: 3
+      author: marcinOrlikowski
+      changes:
+        - createTable:
+            tableName: doctor
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_doctor_id
+              - column:
+                  name: email
+                  type: varchar(100)
+              - column:
+                  name: password
+                  type: varchar(100)
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_doctor_user
+                    references: users(id)
+              - column:
+                  name: specialization
+                  type: varchar(255)
+
+  - changeSet:
+      id: 4
+      author: marcinOrlikowski
+      changes:
+        - createTable:
+            tableName: institution
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_institution_id
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    unique: true
+              - column:
+                  name: city
+                  type: varchar(100)
+              - column:
+                  name: postal_code
+                  type: varchar(100)
+              - column:
+                  name: street_name
+                  type: varchar(100)
+              - column:
+                  name: building_number
+                  type: varchar(100)
+
+  - changeSet:
+      id: 5
+      author: marcinOrlikowski
+      changes:
+        - createTable:
+            tableName: doctor_institution
+            columns:
+              - column:
+                  name: doctor_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_doctor_institution_doctor
+                    references: doctor(id)
+              - column:
+                  name: institution_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_doctor_institution_institution
+                    references: institution(id)
+        - addUniqueConstraint:
+            columnNames: doctor_id, institution_id
+            constraintName: uq_doctor_institution
+            tableName: doctor_institution
+
+  - changeSet:
+      id: 6
+      author: marcinOrlikowski
+      changes:
+        - createTable:
+            tableName: appointment
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_appointment_id
+              - column:
+                  name: start_date
+                  type: timestamp
+              - column:
+                  name: end_date
+                  type: timestamp
+              - column:
+                  name: doctor_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_appointment_doctor
+                    references: doctor(id)
+              - column:
+                  name: patient_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_appointment_patient
+                    references: patient(id)
+

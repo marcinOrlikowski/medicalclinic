@@ -9,6 +9,7 @@ import com.marcinorlikowski.medicalclinic.mapper.AppointmentMapper;
 import com.marcinorlikowski.medicalclinic.model.Appointment;
 import com.marcinorlikowski.medicalclinic.model.Doctor;
 import com.marcinorlikowski.medicalclinic.model.Patient;
+import com.marcinorlikowski.medicalclinic.model.Specialization;
 import com.marcinorlikowski.medicalclinic.repository.AppointmentsRepository;
 import com.marcinorlikowski.medicalclinic.repository.DoctorRepository;
 import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
@@ -20,6 +21,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -43,6 +47,26 @@ public class AppointmentService {
         log.info("Getting appointments page: {}, with {} elements for doctor with id: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), doctorId);
         Page<Appointment> appointments = appointmentsRepository.findAllByDoctorId(pageable, doctorId);
+        List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
+        PageMetadata metadata = createPageMetaData(appointments);
+        return new PageDto<>(appointmentsDto, metadata);
+    }
+
+    public PageDto<AppointmentDto> getAvailableByDoctorId(Pageable pageable, Long doctorId) {
+        log.info("Getting available appointments page: {}, with {} elements for doctor with id: {}",
+                pageable.getPageNumber(), pageable.getPageSize(), doctorId);
+        Page<Appointment> appointments = appointmentsRepository.findByDoctorIdAndPatientIsNull(pageable, doctorId);
+        List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
+        PageMetadata metadata = createPageMetaData(appointments);
+        return new PageDto<>(appointmentsDto, metadata);
+    }
+
+    public PageDto<AppointmentDto> getAvailableBySpecializationAndDate(Pageable pageable, Specialization specialization, LocalDate date) {
+        log.info("Getting available appointments for specialization {} on {} page: {}, with {} elements",
+                specialization, date, pageable.getPageNumber(), pageable.getPageSize());
+        LocalDateTime startDate = date.atStartOfDay();
+        LocalDateTime endDate = date.atTime(LocalTime.MAX);
+        Page<Appointment> appointments = appointmentsRepository.findAvailableBySpecializationAndDate(pageable, specialization, startDate, endDate);
         List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
         PageMetadata metadata = createPageMetaData(appointments);
         return new PageDto<>(appointmentsDto, metadata);

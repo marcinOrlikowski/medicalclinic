@@ -1,6 +1,7 @@
 package com.marcinorlikowski.medicalclinic.controller;
 
 import com.marcinorlikowski.medicalclinic.dto.*;
+import com.marcinorlikowski.medicalclinic.model.Specialization;
 import com.marcinorlikowski.medicalclinic.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,8 +15,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Tag(
         name = "Appointments",
@@ -43,6 +48,25 @@ public class AppointmentController {
             @Parameter(description = "Page, number of items to be displayed and sorting method")
             @PageableDefault(size = 20, sort = "id") Pageable pageable, @PathVariable Long doctorId) {
         return appointmentService.getAllByDoctorId(pageable, doctorId);
+    }
+
+    @Operation(summary = "Get all available appointments by doctor id")
+    @GetMapping("/doctors/{doctorId}/available")
+    public PageDto<AppointmentDto> getAvailableByDoctorId(
+            @Parameter(description = "Page, number of items to be displayed and sorting method")
+            @PageableDefault(size = 20, sort = "id") Pageable pageable, @PathVariable Long doctorId) {
+        return appointmentService.getAvailableByDoctorId(pageable, doctorId);
+    }
+
+    @Operation(summary = "Get all available appointments by specialization and date")
+    @GetMapping("/available")
+    public PageDto<AppointmentDto> getAvailableBySpecializationAndDate(
+            @Parameter(description = "Page, number of items to be displayed and sorting method")
+            @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            @RequestParam(required = false) Specialization specialization,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            ) {
+        return appointmentService.getAvailableBySpecializationAndDate(pageable, specialization, date);
     }
 
     @Operation(summary = "Get all appointments by patient id")
@@ -82,10 +106,10 @@ public class AppointmentController {
             @ApiResponse(responseCode = "409", description = "Appointment is not available anymore",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ErrorDto.class)))})
-    @PatchMapping("/{appointmentId}/patient/{patientId}")
-    public AppointmentDto assignPatient(@PathVariable Long appointmentId, @PathVariable Long patientId) {
+    @PatchMapping("/{appointmentId}/assign")
+    public AppointmentDto assignPatient(@PathVariable Long appointmentId, @RequestBody AssignPatientToAppointmentCommand command) {
         log.info("Received PATCH /appointments/{}/patient/{} request to add patient to appointment",
-                appointmentId, patientId);
-        return appointmentService.assignPatient(appointmentId, patientId);
+                appointmentId, command.patientId());
+        return appointmentService.assignPatient(appointmentId, command.patientId());
     }
 }
