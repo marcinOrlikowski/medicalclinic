@@ -1,6 +1,7 @@
 package com.marcinorlikowski.medicalclinic.controller;
 
 import com.marcinorlikowski.medicalclinic.dto.*;
+import com.marcinorlikowski.medicalclinic.model.Specialization;
 import com.marcinorlikowski.medicalclinic.service.DoctorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,13 +29,15 @@ import org.springframework.web.bind.annotation.*;
 public class DoctorController {
     private final DoctorService doctorService;
 
-    @Operation(summary = "Get all doctors")
+    @Operation(summary = "Get doctors by filters")
     @GetMapping
-    public PageDto<DoctorDto> getAll(
+    public PageDto<DoctorDto> getByFilters(
             @Parameter(description = "Page, number of items to be displayed and sorting method")
-            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        log.info("Received GET /doctors request)");
-        return doctorService.getAll(pageable);
+            @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            @RequestParam(required = false) Specialization specialization
+    ) {
+        log.info("Received GET /doctors request with filters: '{}'", specialization);
+        return doctorService.getByFilters(pageable, specialization);
     }
 
     @Operation(summary = "Add doctor")

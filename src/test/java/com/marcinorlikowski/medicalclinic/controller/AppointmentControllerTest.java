@@ -37,13 +37,13 @@ public class AppointmentControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void getAll_DataCorrect_PageReturned() throws Exception {
+    void getByFilters_DataCorrect_PageReturned() throws Exception {
         AppointmentDto appointmentDto1 = new AppointmentDto(
                 1L, LocalDateTime.of(2050, 2, 15, 15, 0),
-                LocalDateTime.of(2050, 2, 15, 16, 0), 1L, 1L);
+                LocalDateTime.of(2050, 2, 15, 16, 0), 1L, null);
         AppointmentDto appointmentDto2 = new AppointmentDto(
                 2L, LocalDateTime.of(2050, 2, 15, 15, 0),
-                LocalDateTime.of(2050, 2, 15, 16, 0), 1L, 1L);
+                LocalDateTime.of(2050, 2, 15, 16, 0), 1L, null);
         List<AppointmentDto> appointmentsDto = List.of(appointmentDto1, appointmentDto2);
         PageImpl<AppointmentDto> page = new PageImpl<>(appointmentsDto);
         PageMetadata metadata = new PageMetadata(
@@ -54,10 +54,12 @@ public class AppointmentControllerTest {
         );
         PageDto<AppointmentDto> pageDto = new PageDto<>(appointmentsDto, metadata);
 
-        when(appointmentService.getAll(any()))
+        when(appointmentService.getByFilters(any(), any()))
                 .thenReturn(pageDto);
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/appointments"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/appointments")
+                        .param("doctorId", "1")
+                        .param("isAvailable", "true"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
@@ -84,7 +86,7 @@ public class AppointmentControllerTest {
         when(appointmentService.getAllByDoctorId(any(), eq(doctorId)))
                 .thenReturn(pageDto);
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/appointments/doctors/1"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/appointments/doctor/1"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
@@ -111,7 +113,7 @@ public class AppointmentControllerTest {
         when(appointmentService.getAllByPatientId(any(), eq(patientId)))
                 .thenReturn(pageDto);
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/appointments/patients/1"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/appointments/patient/1"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
@@ -189,33 +191,33 @@ public class AppointmentControllerTest {
     void assignPatient_DataCorrect_PatientAssignedToAppointment() throws Exception {
         Long appointmentId = 1L;
 
-        AssignPatientToAppointmentCommand command = new AssignPatientToAppointmentCommand(1L);
+        AssignPatientToAppointmentCommand command = new AssignPatientToAppointmentCommand(1L, 1L);
         AppointmentDto appointmentDto = new AppointmentDto(
                 appointmentId, LocalDateTime.of(2050, 2, 15, 15, 0, 0),
                 LocalDateTime.of(2050, 2, 15, 16, 0, 0),
                 1L, command.patientId());
 
-        when(appointmentService.assignPatient(appointmentId, command.patientId()))
+        when(appointmentService.assignPatient(command.appointmentId(), command.patientId()))
                 .thenReturn(appointmentDto);
 
-        mockMvc.perform(MockMvcRequestBuilders.patch("/appointments/1/assign")
+        mockMvc.perform(MockMvcRequestBuilders.patch("/appointments")
                         .content(objectMapper.writeValueAsString(command))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.patientId").value(command.patientId()));
-        verify(appointmentService).assignPatient(appointmentId, command.patientId());
+        verify(appointmentService).assignPatient(command.appointmentId(), command.patientId());
         verifyNoMoreInteractions(appointmentService);
     }
 
     @Test
     void assignPatient_AppointmentNotFound_ExceptionThrown() throws Exception {
-        AssignPatientToAppointmentCommand command = new AssignPatientToAppointmentCommand(1L);
+        AssignPatientToAppointmentCommand command = new AssignPatientToAppointmentCommand(1L, 1L);
         when(appointmentService.assignPatient(any(), any()))
                 .thenThrow(new AppointmentNotFoundException());
 
-        mockMvc.perform(MockMvcRequestBuilders.patch("/appointments/1/assign")
+        mockMvc.perform(MockMvcRequestBuilders.patch("/appointments")
                         .content(objectMapper.writeValueAsString(command))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -226,11 +228,11 @@ public class AppointmentControllerTest {
 
     @Test
     void assignPatient_PatientNotFound_ExceptionThrown() throws Exception {
-        AssignPatientToAppointmentCommand command = new AssignPatientToAppointmentCommand(1L);
+        AssignPatientToAppointmentCommand command = new AssignPatientToAppointmentCommand(1L,1L);
         when(appointmentService.assignPatient(any(), any()))
                 .thenThrow(new PatientNotFoundException());
 
-        mockMvc.perform(MockMvcRequestBuilders.patch("/appointments/1/assign")
+        mockMvc.perform(MockMvcRequestBuilders.patch("/appointments")
                         .content(objectMapper.writeValueAsString(command))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
@@ -241,17 +243,43 @@ public class AppointmentControllerTest {
 
     @Test
     void assignPatient_AppointmentAlreadyTaken_ExceptionThrown() throws Exception {
-        AssignPatientToAppointmentCommand command = new AssignPatientToAppointmentCommand(1L);
+        AssignPatientToAppointmentCommand command = new AssignPatientToAppointmentCommand(1L,1L);
         when(appointmentService.assignPatient(any(), any()))
                 .thenThrow(new PatientAlreadyAssignedException());
 
-        mockMvc.perform(MockMvcRequestBuilders.patch("/appointments/1/assign")
+        mockMvc.perform(MockMvcRequestBuilders.patch("/appointments")
                         .content(objectMapper.writeValueAsString(command))
                         .contentType(MediaType.APPLICATION_JSON)
                 )
                 .andDo(print())
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("This appointment is already taken"));
+    }
+
+    @Test
+    void deleteAppointment_DataCorrect_DoctorRemoved() throws Exception {
+        Long appointmentId = 1L;
+        mockMvc.perform(MockMvcRequestBuilders.delete("/appointments")
+                        .param("appointmentId", "1"))
+                .andDo(print())
+                .andExpect(status().isNoContent());
+        verify(appointmentService).deleteAppointment(appointmentId);
+        verifyNoMoreInteractions(appointmentService);
+    }
+
+    @Test
+    void deleteAppointment_DoctorNotFound_ExceptionThrown() throws Exception {
+        Long appointmentId = 1L;
+        doThrow(new AppointmentNotFoundException())
+                .when(appointmentService).deleteAppointment(appointmentId);
+
+        mockMvc.perform(MockMvcRequestBuilders.delete("/appointments")
+                        .param("appointmentId", "1"))
+                .andDo(print())
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Appointment not found"));
+        verify(appointmentService).deleteAppointment(appointmentId);
+        verifyNoMoreInteractions(appointmentService);
     }
 
 }

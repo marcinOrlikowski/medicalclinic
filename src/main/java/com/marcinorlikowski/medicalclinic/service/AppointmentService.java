@@ -1,15 +1,11 @@
 package com.marcinorlikowski.medicalclinic.service;
 
-import com.marcinorlikowski.medicalclinic.dto.AppointmentDto;
-import com.marcinorlikowski.medicalclinic.dto.CreateAppointmentCommand;
-import com.marcinorlikowski.medicalclinic.dto.PageDto;
-import com.marcinorlikowski.medicalclinic.dto.PageMetadata;
+import com.marcinorlikowski.medicalclinic.dto.*;
 import com.marcinorlikowski.medicalclinic.exceptions.*;
 import com.marcinorlikowski.medicalclinic.mapper.AppointmentMapper;
 import com.marcinorlikowski.medicalclinic.model.Appointment;
 import com.marcinorlikowski.medicalclinic.model.Doctor;
 import com.marcinorlikowski.medicalclinic.model.Patient;
-import com.marcinorlikowski.medicalclinic.model.Specialization;
 import com.marcinorlikowski.medicalclinic.repository.AppointmentsRepository;
 import com.marcinorlikowski.medicalclinic.repository.DoctorRepository;
 import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
@@ -19,12 +15,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
+
+import static com.marcinorlikowski.medicalclinic.repository.AppointmentsRepository.AppointmentSpecs.*;
+import static java.util.Objects.nonNull;
 
 @Service
 @RequiredArgsConstructor
@@ -43,30 +40,22 @@ public class AppointmentService {
         return new PageDto<>(appointmentsDto, metadata);
     }
 
+    public PageDto<AppointmentDto> getByFilters(
+            Pageable pageable,
+            AppointmentFilter filter
+    ) {
+        log.info("Getting appointments with filters: {}, page: {}, with {} elements", filter, pageable.getPageNumber(), pageable.getPageSize());
+        Specification<Appointment> spec = createSpecs(filter);
+        Page<Appointment> appointments = appointmentsRepository.findAll(spec, pageable);
+        List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
+        PageMetadata metadata = createPageMetaData(appointments);
+        return new PageDto<>(appointmentsDto, metadata);
+    }
+
     public PageDto<AppointmentDto> getAllByDoctorId(Pageable pageable, Long doctorId) {
         log.info("Getting appointments page: {}, with {} elements for doctor with id: {}",
                 pageable.getPageNumber(), pageable.getPageSize(), doctorId);
         Page<Appointment> appointments = appointmentsRepository.findAllByDoctorId(pageable, doctorId);
-        List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
-        PageMetadata metadata = createPageMetaData(appointments);
-        return new PageDto<>(appointmentsDto, metadata);
-    }
-
-    public PageDto<AppointmentDto> getAvailableByDoctorId(Pageable pageable, Long doctorId) {
-        log.info("Getting available appointments page: {}, with {} elements for doctor with id: {}",
-                pageable.getPageNumber(), pageable.getPageSize(), doctorId);
-        Page<Appointment> appointments = appointmentsRepository.findByDoctorIdAndPatientIsNull(pageable, doctorId);
-        List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
-        PageMetadata metadata = createPageMetaData(appointments);
-        return new PageDto<>(appointmentsDto, metadata);
-    }
-
-    public PageDto<AppointmentDto> getAvailableBySpecializationAndDate(Pageable pageable, Specialization specialization, LocalDate date) {
-        log.info("Getting available appointments for specialization {} on {} page: {}, with {} elements",
-                specialization, date, pageable.getPageNumber(), pageable.getPageSize());
-        LocalDateTime startDate = date.atStartOfDay();
-        LocalDateTime endDate = date.atTime(LocalTime.MAX);
-        Page<Appointment> appointments = appointmentsRepository.findAvailableBySpecializationAndDate(pageable, specialization, startDate, endDate);
         List<AppointmentDto> appointmentsDto = mapper.toDto(appointments.getContent());
         PageMetadata metadata = createPageMetaData(appointments);
         return new PageDto<>(appointmentsDto, metadata);
@@ -107,6 +96,20 @@ public class AppointmentService {
         return mapper.toDto(saved);
     }
 
+    @Transactional
+    public void deleteAppointment(Long appointmentId) {
+        Appointment appointment = appointmentsRepository.findById(appointmentId)
+                .orElseThrow(AppointmentNotFoundException::new);
+        Doctor doctor = appointment.getDoctor();
+        Patient patient = appointment.getPatient();
+        if (nonNull(patient) && nonNull(doctor)) {
+            patient.detachPatientFromAppointment(appointment);
+            doctor.removeAppointment(appointment);
+        }
+        appointmentsRepository.delete(appointment);
+        log.info("Appointment with id: '{}', successfully deleted", appointmentId);
+    }
+
     private void checkIfAppointmentOverlaps(CreateAppointmentCommand command) {
         boolean overlaps = appointmentsRepository.existsOverlappingAppointment(
                 command.doctorId(), command.startDate(), command.endDate()
@@ -123,5 +126,32 @@ public class AppointmentService {
                 appointments.getTotalElements(),
                 appointments.getTotalPages()
         );
+    }
+
+    private Specification<Appointment> createSpecs(AppointmentFilter filter) {
+        Specification<Appointment> spec = Specification.unrestricted();
+        if (filter.getIsAvailable() != null) {
+            spec = spec.and(byIsAvailable(filter.getIsAvailable()));
+        }
+        if (filter.getDoctorId() != null) {
+            spec = spec.and(byDoctorId(filter.getDoctorId()));
+        }
+        if (filter.getPatientId() != null) {
+            spec = spec.and(byPatientId(filter.getPatientId()));
+        }
+        if (filter.getSpecialization() != null) {
+            spec = spec.and(bySpecialization(filter.getSpecialization()));
+        }
+        if (filter.getDate() != null) {
+            spec = spec.and(byDate(filter.getDate()));
+        } else {
+            if (filter.getStartDate() != null) {
+                spec = spec.and(byStartDateAfter(filter.getStartDate()));
+            }
+            if (filter.getEndDate() != null) {
+                spec = spec.and(byEndDateBefore(filter.getEndDate()));
+            }
+        }
+        return spec;
     }
 }

@@ -1,14 +1,12 @@
 package com.marcinorlikowski.medicalclinic.service;
 
 import com.marcinorlikowski.medicalclinic.dto.AppointmentDto;
+import com.marcinorlikowski.medicalclinic.dto.AppointmentFilter;
 import com.marcinorlikowski.medicalclinic.dto.CreateAppointmentCommand;
 import com.marcinorlikowski.medicalclinic.dto.PageDto;
 import com.marcinorlikowski.medicalclinic.exceptions.*;
 import com.marcinorlikowski.medicalclinic.mapper.AppointmentMapper;
-import com.marcinorlikowski.medicalclinic.model.Appointment;
-import com.marcinorlikowski.medicalclinic.model.Doctor;
-import com.marcinorlikowski.medicalclinic.model.Patient;
-import com.marcinorlikowski.medicalclinic.model.Period;
+import com.marcinorlikowski.medicalclinic.model.*;
 import com.marcinorlikowski.medicalclinic.repository.AppointmentsRepository;
 import com.marcinorlikowski.medicalclinic.repository.DoctorRepository;
 import com.marcinorlikowski.medicalclinic.repository.PatientRepository;
@@ -19,12 +17,14 @@ import org.mapstruct.factory.Mappers;
 import org.mockito.Mockito;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static com.marcinorlikowski.medicalclinic.repository.AppointmentsRepository.AppointmentSpecs.byIsAvailable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -66,7 +66,31 @@ public class AppointmentServiceTest {
                 () -> Assertions.assertEquals(1L, result.content().get(0).id()),
                 () -> Assertions.assertEquals(2L, result.content().get(1).id())
         );
+    }
 
+    @Test
+    void getByFilters_DataCorrect_PageReturned() {
+        // given
+        AppointmentFilter filter = new AppointmentFilter();
+        filter.setIsAvailable(true);
+        PageRequest pageRequest = PageRequest.of(0, 20);
+        Appointment appointment1 = new Appointment();
+        appointment1.setId(1L);
+        Appointment appointment2 = new Appointment();
+        appointment2.setId(2L);
+        List<Appointment> appointments = List.of(appointment1, appointment2);
+        PageImpl<Appointment> appointmentsPage = new PageImpl<>(appointments);
+        when(appointmentsRepository.findAll(any(Specification.class), eq(pageRequest)))
+                .thenReturn(appointmentsPage);
+        // when
+        PageDto<AppointmentDto> result = appointmentService.getByFilters(pageRequest, filter);
+        // then
+        Assertions.assertAll(
+                () -> Assertions.assertNotNull(result),
+                () -> Assertions.assertEquals(2, result.content().size()),
+                () -> Assertions.assertEquals(1L, result.content().get(0).id()),
+                () -> Assertions.assertEquals(2L, result.content().get(1).id())
+        );
     }
 
     @Test
@@ -305,5 +329,47 @@ public class AppointmentServiceTest {
         verify(patientRepository).findById(any());
         verifyNoMoreInteractions(appointmentsRepository);
         verifyNoMoreInteractions(patientRepository);
+    }
+
+    @Test
+    void deleteAppointment_DataCorrect_DoctorRemoved() {
+        // given
+        Appointment appointment = new Appointment();
+        Doctor doctor = new Doctor();
+        Patient patient = new Patient();
+        Long appointmentId = 1L;
+        appointment.setId(appointmentId);
+        appointment.setDoctor(doctor);
+        appointment.setPatient(patient);
+        when(appointmentsRepository.findById(appointmentId))
+                .thenReturn(Optional.of(appointment));
+        // when
+        appointmentService.deleteAppointment(appointmentId);
+        // then
+        Assertions.assertAll(
+                () -> Assertions.assertNull(appointment.getDoctor()),
+                () -> Assertions.assertNull(appointment.getPatient())
+        );
+        verify(appointmentsRepository).findById(appointmentId);
+        verify(appointmentsRepository).delete(appointment);
+        verifyNoMoreInteractions(appointmentsRepository);
+    }
+
+    @Test
+    void deleteAppointment_AppointmentNotFound_ExceptionThrown() {
+        // given
+        Long appointmentId = 1L;
+        when(appointmentsRepository.findById(appointmentId))
+                .thenReturn(Optional.empty());
+        // when
+        AppointmentNotFoundException exception = Assertions.assertThrows(AppointmentNotFoundException.class,
+                () -> appointmentService.deleteAppointment(appointmentId));
+        // then
+        Assertions.assertAll(
+                () -> Assertions.assertEquals("Appointment not found", exception.getMessage()),
+                () -> Assertions.assertEquals(HttpStatus.NOT_FOUND, exception.getStatus())
+        );
+        verify(appointmentsRepository).findById(appointmentId);
+        verifyNoMoreInteractions(appointmentsRepository);
     }
 }
