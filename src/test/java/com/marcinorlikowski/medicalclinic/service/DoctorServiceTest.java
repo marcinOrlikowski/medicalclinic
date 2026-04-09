@@ -1,8 +1,6 @@
 package com.marcinorlikowski.medicalclinic.service;
 
-import com.marcinorlikowski.medicalclinic.dto.CreateDoctorCommand;
-import com.marcinorlikowski.medicalclinic.dto.DoctorDto;
-import com.marcinorlikowski.medicalclinic.dto.PageDto;
+import com.marcinorlikowski.medicalclinic.dto.*;
 import com.marcinorlikowski.medicalclinic.exceptions.DoctorNotFoundException;
 import com.marcinorlikowski.medicalclinic.exceptions.ResourceAlreadyExistsException;
 import com.marcinorlikowski.medicalclinic.mapper.DoctorMapper;
@@ -17,6 +15,7 @@ import org.mapstruct.factory.Mappers;
 import org.mockito.Mockito;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 
 import java.util.Collections;
@@ -61,6 +60,30 @@ public class DoctorServiceTest {
                 () -> Assertions.assertEquals(2L, result.content().get(1).id()),
                 () -> Assertions.assertEquals("abc@df.com", result.content().get(0).email()),
                 () -> Assertions.assertEquals("abc2@df.com", result.content().get(1).email())
+        );
+    }
+
+    @Test
+    void getByFilters_DataCorrect_PageReturned() {
+        // given
+        Specialization specialization = Specialization.SURGEON;
+        PageRequest pageRequest = PageRequest.of(0, 20);
+        Doctor doctor1 = new Doctor();
+        doctor1.setId(1L);
+        Doctor doctor2 = new Doctor();
+        doctor2.setId(2L);
+        List<Doctor> doctors = List.of(doctor1, doctor2);
+        PageImpl<Doctor> doctorsPage = new PageImpl<>(doctors);
+        when(doctorRepository.findAll(any(Specification.class), eq(pageRequest)))
+                .thenReturn(doctorsPage);
+        // when
+        PageDto<DoctorDto> result = doctorService.getByFilters(pageRequest, specialization);
+        // then
+        Assertions.assertAll(
+                () -> Assertions.assertNotNull(result),
+                () -> Assertions.assertEquals(2, result.content().size()),
+                () -> Assertions.assertEquals(1L, result.content().get(0).id()),
+                () -> Assertions.assertEquals(2L, result.content().get(1).id())
         );
     }
 

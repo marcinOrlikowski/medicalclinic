@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0
+      author: marcinOrlikowski
+      changes:
+        - createTable:
+            tableName: patient
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_patient_id
+              - column:
+                  name: email
+                  type: varchar(100)
+              - column:
+                  name: password
+                  type: varchar(100)
+              - column:
+                  name: id_card_no
+                  type: varchar(255)
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: phone_number
+                  type: varchar(255)
+              - column:
+                  name: birth_date
+                  type: date

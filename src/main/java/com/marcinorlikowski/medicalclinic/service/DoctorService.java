@@ -14,10 +14,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+
+import static com.marcinorlikowski.medicalclinic.repository.DoctorRepository.DoctorSpecs.bySpecialization;
 
 @Slf4j
 @Service
@@ -31,13 +34,18 @@ public class DoctorService {
         log.info("Getting doctors page: {}, with {} elements", pageable.getPageNumber(), pageable.getPageSize());
         Page<Doctor> doctors = doctorRepository.findAll(pageable);
         List<DoctorDto> doctorsDto = doctorMapper.toDto(doctors.getContent());
-        PageMetadata metadata = new PageMetadata(
-                doctors.getNumber(),
-                doctors.getSize(),
-                doctors.getTotalElements(),
-                doctors.getTotalPages()
-        );
+        PageMetadata metadata = createMetaData(doctors);
         return new PageDto<>(doctorsDto, metadata);
+    }
+
+    public PageDto<DoctorDto> getByFilters(Pageable pageable, Specialization specialization) {
+        log.info("Getting doctors by filters: specialization: '{}', page: {}, with {} elements",
+                specialization, pageable.getPageNumber(), pageable.getPageSize());
+        Specification<Doctor> spec = createSpec(specialization);
+        Page<Doctor> doctors = doctorRepository.findAll(spec, pageable);
+        List<DoctorDto> doctorsDto = doctorMapper.toDto(doctors.getContent());
+        PageMetadata metaData = createMetaData(doctors);
+        return new PageDto<>(doctorsDto, metaData);
     }
 
     @Transactional
@@ -78,5 +86,22 @@ public class DoctorService {
         if (foundDoctor.isPresent()) {
             throw new ResourceAlreadyExistsException("Doctor already exists");
         }
+    }
+
+    private PageMetadata createMetaData(Page<Doctor> doctors) {
+        return new PageMetadata(
+                doctors.getNumber(),
+                doctors.getSize(),
+                doctors.getTotalElements(),
+                doctors.getTotalPages()
+        );
+    }
+
+    private Specification<Doctor> createSpec(Specialization specialization) {
+        Specification<Doctor> spec = Specification.unrestricted();
+        if (specialization != null) {
+            spec = spec.and(bySpecialization(specialization));
+        }
+        return spec;
     }
 }

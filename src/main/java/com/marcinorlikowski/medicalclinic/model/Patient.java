@@ -1,5 +1,6 @@
 package com.marcinorlikowski.medicalclinic.model;
 
+import com.marcinorlikowski.medicalclinic.dto.AppointmentDto;
 import com.marcinorlikowski.medicalclinic.dto.CreatePatientCommand;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "PATIENT")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -59,6 +61,11 @@ public class Patient {
     public void assignPatientToAppointment(Appointment appointment) {
         this.appointments.add(appointment);
         appointment.setPatient(this);
+    }
+
+    public void detachPatientFromAppointment(Appointment appointment) {
+        this.appointments.remove(appointment);
+        appointment.setPatient(null);
     }
 
     @Override

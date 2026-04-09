@@ -35,9 +35,9 @@ public class DoctorControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void getAll_DataCorrect_PageReturned() throws Exception {
+    void getByFilters_DataCorrect_PageReturned() throws Exception {
         DoctorDto doctorDto1 = new DoctorDto(1L, "abc@df.com", "Sebek",
-                "Javowy", Specialization.CARDIOLOGIST);
+                "Javowy", Specialization.SURGEON);
         DoctorDto doctorDto2 = new DoctorDto(2L, "abc@df.com", "Drugi",
                 "Sebek", Specialization.SURGEON);
         List<DoctorDto> doctorsDto = List.of(doctorDto1, doctorDto2);
@@ -50,10 +50,11 @@ public class DoctorControllerTest {
         );
         PageDto<DoctorDto> pageDto = new PageDto<>(doctorsDto, metadata);
 
-        when(doctorService.getAll(any()))
+        when(doctorService.getByFilters(any(), any()))
                 .thenReturn(pageDto);
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/doctors"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/doctors")
+                        .param("specialization", "SURGEON"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
@@ -128,7 +129,7 @@ public class DoctorControllerTest {
     }
 
     @Test
-    void removeDoctor_DoctorNotFound_DoctorRemoved() throws Exception {
+    void removeDoctor_DoctorNotFound_ExceptionThrown() throws Exception {
         Long doctorId = 1L;
         doThrow(new DoctorNotFoundException())
                 .when(doctorService).removeDoctor(doctorId);

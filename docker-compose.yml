@@ -1,5 +1,5 @@
 services:
-  app:
+  medical-clinic:
     build: .
     container_name: 'medical-clinic-app'
     depends_on:
@@ -8,7 +8,6 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/medical-db
       - SPRING_DATASOURCE_USERNAME=compose-postgres
       - SPRING_DATASOURCE_PASSWORD=compose-postgres
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
     ports:
       - '8080:8080'
     networks:
@@ -43,6 +42,7 @@ services:
 
 networks:
   medicalclinic-network:
+    external: true
 
 volumes:
   medical-data:

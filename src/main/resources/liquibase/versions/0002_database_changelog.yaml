@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: marcinOrlikowski
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_user_id
+              - column:
+                  name: first_name
+                  type: varchar(100)
+              - column:
+                  name: last_name
+                  type: varchar(100)
+
+  - changeSet:
+      id: 2
+      author: marcinOrlikowski
+      changes:
+        - addForeignKeyConstraint:
+            constraintName: fk_patient_user
+            baseColumnNames: user_id
+            baseTableName: patient
+            referencedColumnNames: id
+            referencedTableName: users
+

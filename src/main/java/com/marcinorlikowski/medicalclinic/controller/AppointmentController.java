@@ -28,17 +28,18 @@ import org.springframework.web.bind.annotation.*;
 public class AppointmentController {
     private final AppointmentService appointmentService;
 
-    @Operation(summary = "Get all appointments")
+    @Operation(summary = "Get appointments by filters")
     @GetMapping
-    public PageDto<AppointmentDto> getAll(
+    public PageDto<AppointmentDto> getByFilters(
             @Parameter(description = "Page, number of items to be displayed and sorting method")
-            @PageableDefault(size = 20, sort = "id") Pageable pageable) {
-        log.info("Received GET /institutions request)");
-        return appointmentService.getAll(pageable);
+            @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            AppointmentFilter filter
+    ) {
+        return appointmentService.getByFilters(pageable, filter);
     }
 
     @Operation(summary = "Get all appointments by doctor id")
-    @GetMapping("/doctors/{doctorId}")
+    @GetMapping("/doctor/{doctorId}")
     public PageDto<AppointmentDto> getAllByDoctorId(
             @Parameter(description = "Page, number of items to be displayed and sorting method")
             @PageableDefault(size = 20, sort = "id") Pageable pageable, @PathVariable Long doctorId) {
@@ -46,7 +47,7 @@ public class AppointmentController {
     }
 
     @Operation(summary = "Get all appointments by patient id")
-    @GetMapping("/patients/{patientId}")
+    @GetMapping("/patient/{patientId}")
     public PageDto<AppointmentDto> getAllByPatientId(
             @Parameter(description = "Page, number of items to be displayed and sorting method")
             @PageableDefault(size = 20, sort = "id") Pageable pageable, @PathVariable Long patientId) {
@@ -82,10 +83,25 @@ public class AppointmentController {
             @ApiResponse(responseCode = "409", description = "Appointment is not available anymore",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = ErrorDto.class)))})
-    @PatchMapping("/{appointmentId}/patient/{patientId}")
-    public AppointmentDto assignPatient(@PathVariable Long appointmentId, @PathVariable Long patientId) {
-        log.info("Received PATCH /appointments/{}/patient/{} request to add patient to appointment",
-                appointmentId, patientId);
-        return appointmentService.assignPatient(appointmentId, patientId);
+    @PatchMapping
+    public AppointmentDto assignPatient(@RequestBody AssignPatientToAppointmentCommand command) {
+        log.info("Received PATCH /appointments request to add patient with Id: '{}' to appointment with Id: '{}'",
+                command.appointmentId(), command.patientId());
+        return appointmentService.assignPatient(command.appointmentId(), command.patientId());
+    }
+
+    @Operation(summary = "Delete appointment")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Patient assigned to appointment",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = AppointmentDto.class))}),
+            @ApiResponse(responseCode = "404", description = "Appointment not found",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorDto.class))})})
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAppointment(@RequestParam Long appointmentId) {
+        log.info("Received DELETE /appointments request to delete appointment with Id: '{}'", appointmentId);
+        appointmentService.deleteAppointment(appointmentId);
     }
 }
